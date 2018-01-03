@@ -1,19 +1,20 @@
 [general]
-name=TauDEM SEXTANTE Provider
+name=TauDEM for Processing
 description=DEM tools for the extraction and analysis of hydrologic information
-category=Raster
-version = 1.1.0
-qgisMinimumVersion=1.8.0
+about=TauDEM (Terrain analysis using Digital Elevation Models) is a suite of DEM tools for the extraction and analysis of hydrologic information from topography as represented by a DEM.
+category=Plugins
+version=1.1.0
+qgisMinimumVersion=2.99
 
 icon=icons/taudem.png
+tags=analysis,processing,hydrology
 
-authorName=Alexander Bruy
+author=Alexander Bruy
+email=alexander.bruy@gmail.com
 
-tags=raster,analysis,SEXTANTE,hydrology
+homepage=https://github.com/alexbruy/processing-taudem
+tracker=https://github.com/alexbruy/processing-taudem/issues
+repository=https://github.com/alexbruy/processing-taudem
 
-homepage =
-tracker=http://hub.qgis.org/projects/sextante-taudem
-repository=https://github.com/alexbruy/sextante-taudem
-
-experimental=True
-deprecated=True
+experimental=False
+deprecated=False
