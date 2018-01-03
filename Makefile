@@ -1,48 +1,37 @@
-UI_PATH=.
-UI_SOURCES=$(wildcard $(UI_PATH)/*.ui)
-UI_FILES=$(patsubst $(UI_PATH)/%.ui, $(UI_PATH)/ui_%.py, $(UI_SOURCES))
-
+PLUGIN_NAME=processing_taudem
 LANG_PATH=i18n
 LANG_SOURCES=$(wildcard $(LANG_PATH)/*.ts)
 LANG_FILES=$(patsubst $(LANG_PATH)/%.ts, $(LANG_PATH)/%.qm, $(LANG_SOURCES))
 
-RES_PATH=.
-RES_SOURCES=$(wildcard $(RES_PATH)/*.qrc)
-RES_FILES=$(patsubst $(RES_PATH)/%.qrc, $(RES_PATH)/%_rc.py, $(RES_SOURCES))
-
 PRO_PATH=.
 PRO_FILES=$(wildcard $(PRO_PATH)/*.pro)
 
-ALL_FILES= ${RES_FILES} ${UI_FILES} ${LANG_FILES}
+ALL_FILES=${LANG_FILES}
 
 all: $(ALL_FILES)
 
-ui: $(UI_FILES)
-
 ts: $(PRO_FILES)
-	pylupdate4 -verbose $<
+	pylupdate5 -verbose $<
 
 lang: $(LANG_FILES)
-
-res: $(RES_FILES)
-
-$(UI_FILES): $(UI_PATH)/ui_%.py: $(UI_PATH)/%.ui
-	pyuic4 -o $@ $<
 
 $(LANG_FILES): $(LANG_PATH)/%.qm: $(LANG_PATH)/%.ts
 	lrelease $<
 
-$(RES_FILES): $(RES_PATH)/%_rc.py: $(RES_PATH)/%.qrc
-	pyrcc4 -o $@ $<
+pep8:
+	@echo
+	@echo "-----------"
+	@echo "PEP8 issues"
+	@echo "-----------"
+	@pep8 --repeat --ignore=E203,E121,E122,E123,E124,E125,E126,E127,E128 . || true
 
 clean:
 	rm -f $(ALL_FILES)
-	rm -f *.pyc
-	rm -f *.zip
+	find -name "*.pyc" -exec rm -f {} \;
+	rm -f ../$(PLUGIN_NAME).zip
 
-package:
-	cd .. && rm -f *.zip && zip -r sextante_taudem.experimental.zip sextante_taudem -x \*.pyc \*.ts \*.ui \*.qrc \*.pro \*~ \*.git\* \*Makefile*
-	mv ../sextante_taudem.experimental.zip .
+package: clean ts all
+	cd .. && rm -f *.zip && zip -r $(PLUGIN_NAME).zip $(PLUGIN_NAME) -x \*.pyc \*.ts \*.pro \*~ \*.git\* \*Makefile*
 
-upload:
-	plugin_uploader.py sextante_taudem.experimental.zip
+upload: package
+	plugin_uploader.py ../$(PLUGIN_NAME).zip
