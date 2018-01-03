@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-    __init__.py
+    taudemProviderPlugin.py
     ---------------------
     Date                 : May 2012
     Copyright            : (C) 2012-2017 by Alexander Bruy
@@ -25,9 +25,18 @@ __copyright__ = '(C) 2012-2017, Alexander Bruy'
 
 __revision__ = '$Format:%H$'
 
+from qgis.core import QgsApplication
 
-from processing_taudem.taudemProviderPlugin import TauDemProviderPlugin
+from processing_taudem.taudemProvider import TauDemProvider
 
 
-def classFactory(iface):
-    return TauDemProviderPlugin()
+class TauDemProviderPlugin:
+
+    def __init__(self):
+        self.provider = TauDemProvider()
+
+    def initGui(self):
+        QgsApplication.processingRegistry().addProvider(self.provider)
+
+    def unload(self):
+        QgsApplication.processingRegistry().removeProvider(self.provider)
