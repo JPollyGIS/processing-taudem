@@ -4,9 +4,9 @@ description=DEM tools for the extraction and analysis of hydrologic information
 about=TauDEM (Terrain analysis using Digital Elevation Models) is a suite of DEM tools for the extraction and analysis of hydrologic information from topography as represented by a DEM.
 category=Plugins
 version=1.1.0
-qgisMinimumVersion=2.99
+qgisMinimumVersion=3.0
 
-icon=icons/taudem.png
+icon=icons/taudem.svg
 tags=analysis,processing,hydrology
 
 author=Alexander Bruy

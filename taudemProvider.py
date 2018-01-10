@@ -57,7 +57,7 @@ class TauDemProvider(QgsProcessingProvider):
         return 'TauDEM ({})'.format(version) if version is not None else 'TauDEM'
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, 'icons', 'taudem.png'))
+        return QIcon(os.path.join(pluginPath, 'icons', 'taudem.svg'))
 
     def load(self):
         ProcessingConfig.settingIcons[self.name()] = self.icon()
