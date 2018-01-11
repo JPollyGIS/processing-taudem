@@ -25,17 +25,12 @@ __copyright__ = '(C) 2012-2017, Alexander Bruy'
 
 __revision__ = '$Format:%H$'
 
-
 import os
-import re
 import subprocess
 
 from qgis.core import QgsMessageLog, QgsProcessingFeedback
 from processing.core.ProcessingLog import ProcessingLog
 from processing.core.ProcessingConfig import ProcessingConfig
-
-versionRegex = re.compile('([\d.]+)')
-progressRegex = re.compile('\d+')
 
 TAUDEM_ACTIVE = 'TAUDEM_ACTIVE'
 TAUDEM_DIRECTORY = 'TAUDEM_DIRECTORY'
@@ -59,10 +54,22 @@ def descriptionPath():
 
 
 def execute(commands, feedback=None):
+    cmds = []
+    cmds.append(os.path.join(mpichDirectory(), "mpiexec"))
+
+    processes = int(ProcessingConfig.getSetting(TAUDEM_PROCESSES))
+    print("PROCESSES", processes, type(processes))
+    if processes <= 0:
+      processes = 1
+
+    cmds.append("-n")
+    cmds.append(str(processes))
+    cmds.extend(commands)
+
     if feedback is None:
         feedback = QgsProcessingFeedback()
 
-    fused_command = ' '.join([str(c) for c in commands])
+    fused_command = ' '.join([str(c) for c in cmds])
     QgsMessageLog.logMessage(fused_command, 'Processing', QgsMessageLog.INFO)
     feedback.pushInfo('TauDEM command:')
     feedback.pushCommandInfo(fused_command)
@@ -77,14 +84,8 @@ def execute(commands, feedback=None):
                           universal_newlines=True) as proc:
         try:
             for line in iter(proc.stdout.readline, ''):
-                if '%' in line:
-                    try:
-                        feedback.setProgress(int(progressRegex.search(line).group(0)))
-                    except:
-                        pass
-                else:
-                    feedback.pushConsoleInfo(line)
-                    loglines.append(line)
+                feedback.pushConsoleInfo(line)
+                loglines.append(line)
         except:
             pass
 

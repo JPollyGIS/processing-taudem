@@ -34,7 +34,13 @@ from qgis.core import QgsProcessingProvider, QgsMessageLog
 
 from processing.core.ProcessingConfig import ProcessingConfig, Setting
 
-from processing_taudem.taudemAlgorithm import TauDemAlgorithm
+from processing_taudem.pitremove import PitRemove
+from processing_taudem.aread8 import AreaD8
+from processing_taudem.d8flowdir import D8FlowDir
+from processing_taudem.areadinf import AreaDinf
+from processing_taudem.dinfflowdir import DinfFlowDir
+from processing_taudem.gridnet import GridNet
+
 from processing_taudem import taudemUtils
 
 pluginPath = os.path.dirname(__file__)
@@ -51,10 +57,6 @@ class TauDemProvider(QgsProcessingProvider):
 
     def name(self):
         return 'TauDEM'
-
-    def longName(self):
-        version = taudemUtils.version()
-        return 'TauDEM ({})'.format(version) if version is not None else 'TauDEM'
 
     def icon(self):
         return QIcon(os.path.join(pluginPath, 'icons', 'taudem.svg'))
@@ -104,23 +106,19 @@ class TauDemProvider(QgsProcessingProvider):
     def supportsNonFileBasedOutput(self):
         return False
 
+    def getAlgs(self):
+        algs = [PitRemove(),
+                AreaD8(),
+                D8FlowDir(),
+                AreaDinf(),
+                DinfFlowDir(),
+                GridNet(),
+               ]
+
+        return algs
+
     def loadAlgorithms(self):
-        self.algs = []
-        folder = taudemUtils.descriptionPath()
-
-        for descriptionFile in os.listdir(folder):
-            if descriptionFile.endswith('txt'):
-                try:
-                    alg = TauDemAlgorithm(os.path.join(folder, descriptionFile))
-                    if alg.name().strip() != '':
-                        self.algs.append(alg)
-                    else:
-                        QgsMessageLog.logMessage(self.tr('Could not load TauDEM algorithm from file: {}'.format(descriptionFile)),
-                                                 self.tr('Processing'), QgsMessageLog.CRITICAL)
-                except Exception as e:
-                    QgsMessageLog.logMessage(self.tr('Could not load TauDEM algorithm from file: {}\n{}'.format(descriptionFile, str(e))),
-                                             self.tr('Processing'), QgsMessageLog.CRITICAL)
-
+        self.algs = self.getAlgs()
         for a in self.algs:
             self.addAlgorithm(a)
 
