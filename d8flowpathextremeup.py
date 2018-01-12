@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-    aread8.py
+    d8flowpathextremeup.py
     ---------------------
     Date                 : January 2018
     Copyright            : (C) 2018 by Alexander Bruy
@@ -37,35 +37,37 @@ from qgis.core import (QgsProcessing,
 from processing_taudem.taudemAlgorithm import TauDemAlgorithm
 from processing_taudem import taudemUtils
 
-class AreaD8(TauDemAlgorithm):
+class D8FlowPathExtremeUp(TauDemAlgorithm):
 
     D8_FLOWDIR = "D8_FLOWDIR"
-    WEIGHT_GRID = "WEIGHT_GRID"
+    SLOPE_AREA = "SLOPE_AREA"
     OUTLETS = "OUTLETS"
+    MIN_UPSLOPE = "MIN_UPSLOPE"
     EDGE_CONTAMINATION = "EDGE_CONTAMINATION"
-    D8_CONTRIB_AREA = "D8_CONTRIB_AREA"
+    EXTREME_VALUE = "EXTREME_VALUE"
 
     def name(self):
-        return "aread8"
+        return "d8flowpathextremeup"
 
     def displayName(self):
-        return self.tr("D8 contributing area")
+        return self.tr("D8 Extreme Upslope Value")
 
     def group(self):
-        return self.tr("Basic grid analysis")
+        return self.tr("Stream network analysis")
 
     def groupId(self):
-        return "basicanalysis"
+        return "sreamnalysis"
 
     def tags(self):
-        return self.tr("dem,hydrology,d8,contributing area,catchment area").split(",")
+        return self.tr("dem,hydrology,d8,upslope,extreme").split(",")
 
     def shortHelpString(self):
-        return self.tr("Calculates a grid of contributing areas using the "
-                       "single direction D8 flow model.")
+        return self.tr("Evaluates the extreme (either maximum or minimum) "
+                       "upslope value from an input grid based on the D8 flow "
+                       "model.")
 
     def helpUrl(self):
-        return "http://hydrology.usu.edu/taudem/taudem5/help53/D8ContributingArea.html"
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/D8ExtremeUpslopeValue.html"
 
     def __init__(self):
         super().__init__()
@@ -73,19 +75,21 @@ class AreaD8(TauDemAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(self.D8_FLOWDIR,
                                                             self.tr("D8 flow directions")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.SLOPE_AREA,
+                                                            self.tr("Slope area")))
         self.addParameter(QgsProcessingParameterVectorLayer(self.OUTLETS,
                                                             self.tr("Outlets"),
                                                             types=[QgsProcessing.TypeVectorPoint],
                                                             optional=True))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.WEIGHT_GRID,
-                                                            self.tr("Weight grid"),
-                                                            optional=True))
+        self.addParameter(QgsProcessingParameterBoolean(self.MIN_UPSLOPE,
+                                                        self.tr("Calculate minimum upslope value"),
+                                                        defaultValue=False))
         self.addParameter(QgsProcessingParameterBoolean(self.EDGE_CONTAMINATION,
                                                         self.tr("Check for edge contamination"),
                                                         defaultValue=False))
 
-        self.addParameter(QgsProcessingParameterRasterDestination(self.D8_CONTRIB_AREA,
-                                                                  self.tr("D8 specific catchment area")))
+        self.addParameter(QgsProcessingParameterRasterDestination(self.EXTREME_VALUE,
+                                                                  self.tr("Extreme value")))
 
     def processAlgorithm(self, parameters, context, feedback):
         arguments = []
@@ -94,22 +98,24 @@ class AreaD8(TauDemAlgorithm):
         arguments.append("-p")
         arguments.append(self.parameterAsRasterLayer(parameters, self.D8_FLOWDIR, context).source())
 
+        arguments.append("-sa")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.SLOPE_AREA, context).source())
+
         outlets = self.parameterAsVectorLayer(parameters, self.OUTLETS, context)
         if outlets:
             arguments.append("-o")
             arguments.append(outlets.source())
 
-        weight = self.parameterAsRasterLayer(parameters, self.WEIGHT_GRID, context)
-        if weight:
-            arguments.append("-wg")
-            arguments.append(weight.source())
+        minUpslope = self.parameterAsBool(parameters, self.MIN_UPSLOPE, context)
+        if minUpslope:
+            arguments.append("-min")
 
         edgeContamination = self.parameterAsBool(parameters, self.EDGE_CONTAMINATION, context)
         if edgeContamination:
             arguments.append("-nc")
 
-        outputFile = self.parameterAsOutputLayer(parameters, self.D8_CONTRIB_AREA, context)
-        arguments.append("-ad8")
+        outputFile = self.parameterAsOutputLayer(parameters, self.EXTREME_VALUE, context)
+        arguments.append("-ssa")
         arguments.append(outputFile)
 
         taudemUtils.execute(arguments, feedback)

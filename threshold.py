@@ -2,10 +2,10 @@
 
 """
 ***************************************************************************
-    lengtharea.py
+    threshold.py
     ---------------------
-    Date                 : June 2012
-    Copyright            : (C) 2012-2018 by Alexander Bruy
+    Date                 : January 2018
+    Copyright            : (C) 2018 by Alexander Bruy
     Email                : alexander dot bruy at gmail dot com
 ***************************************************************************
 *                                                                         *
@@ -18,8 +18,8 @@
 """
 
 __author__ = 'Alexander Bruy'
-__date__ = 'June 2012'
-__copyright__ = '(C) 2012-2018, Alexander Bruy'
+__date__ = 'January 2018'
+__copyright__ = '(C) 2018, Alexander Bruy'
 
 # This will get replaced with a git SHA1 when you do a git archive
 
@@ -35,20 +35,18 @@ from qgis.core import (QgsProcessingParameterRasterLayer,
 from processing_taudem.taudemAlgorithm import TauDemAlgorithm
 from processing_taudem import taudemUtils
 
+class Threshold(TauDemAlgorithm):
 
-class LengthArea(TauDemAlgorithm):
-
-    LENGTH = "LENGTH"
-    CONTRIB_AREA = "CONTRIB_AREA"
+    ACCUM_STREAM_SOURCE = "ACCUM_STREAM_SOURCE"
+    MASK_GRID = "MASK_GRID"
     THRESHOLD = "THRESHOLD"
-    EXPONENT = "EXPONENT"
-    STREAM_SOURCE = "STREAM_SOURCE"
+    STREAM_RASTER = "STREAM_RASTER"
 
     def name(self):
-        return "lengtharea"
+        return "threshold"
 
     def displayName(self):
-        return self.tr("Length area stream source")
+        return self.tr("Stream definition by threshold")
 
     def group(self):
         return self.tr("Stream network analysis")
@@ -60,50 +58,48 @@ class LengthArea(TauDemAlgorithm):
         return self.tr("dem,hydrology,dem,threshold,compare").split(",")
 
     def shortHelpString(self):
-        return self.tr("Creates an indicator grid (1, 0) that evaluates "
-                       "A >= M·(L^y) based on upslope path length, D8 "
-                       "contributing area grid inputs, and parameters M and y.")
+        return self.tr("Operates on any grid and outputs an indicator (1, 0) "
+                       "grid identifing cells with input values >= the "
+                       "threshold value.")
 
     def helpUrl(self):
-        return "http://hydrology.usu.edu/taudem/taudem5/help53/LengthAreaStreamSource.html"
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/StreamDefinitionByThreshold.html"
 
     def __init__(self):
         super().__init__()
 
     def initAlgorithm(self, config=None):
-        self.addParameter(QgsProcessingParameterRasterLayer(self.LENGTH,
-                                                            self.tr("Maximum upslope length")))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.CONTRIB_AREA,
-                                                            self.tr("Contributing area")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.ACCUM_STREAM_SOURCE,
+                                                            self.tr("Accumulated stream source")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.MASK_GRID,
+                                                            self.tr("Mask grid"),
+                                                            optional=True))
         self.addParameter(QgsProcessingParameterNumber(self.THRESHOLD,
-                                                       self.tr("Multiplier (M)"),
+                                                       self.tr("Threshold"),
                                                        QgsProcessingParameterNumber.Double,
-                                                       0.03,
-                                                       False))
-        self.addParameter(QgsProcessingParameterNumber(self.EXPONENT,
-                                                       self.tr("Exponent (y)"),
-                                                       QgsProcessingParameterNumber.Double,
-                                                       1.3,
+                                                       100.0,
                                                        False))
 
-        self.addParameter(QgsProcessingParameterRasterDestination(self.STREAM_SOURCE,
-                                                                  self.tr("Stream source")))
+        self.addParameter(QgsProcessingParameterRasterDestination(self.STREAM_RASTER,
+                                                                  self.tr("Stream raster")))
 
     def processAlgorithm(self, parameters, context, feedback):
         arguments = []
         arguments.append(os.path.join(taudemUtils.taudemDirectory(), self.name()))
 
-        arguments.append("-plen")
-        arguments.append(self.parameterAsRasterLayer(parameters, self.LENGTH, context).source())
-        arguments.append("-ad8")
-        arguments.append(self.parameterAsRasterLayer(parameters, self.CONTRIB_AREA, context).source())
+        arguments.append("-ssa")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.ACCUM_STREAM_SOURCE, context).source())
 
-        arguments.append("-par")
+        mask = self.parameterAsRasterLayer(parameters, self.MASK_GRID, context)
+        if mask:
+            arguments.append("-mask")
+            arguments.append(mask.source())
+
+        arguments.append("-thresh")
         arguments.append("{}".format(self.parameterAsDouble(parameters, self.THRESHOLD, context)))
-        arguments.append("{}".format(self.parameterAsDouble(parameters, self.EXPONENT, context)))
 
-        outputFile = self.parameterAsOutputLayer(parameters, self.STREAM_SOURCE, context)
-        arguments.append("-ss")
+        outputFile = self.parameterAsOutputLayer(parameters, self.STREAM_RASTER, context)
+        arguments.append("-src")
         arguments.append(outputFile)
 
         taudemUtils.execute(arguments, feedback)

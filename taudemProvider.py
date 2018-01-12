@@ -5,7 +5,7 @@
     taudemProvider.py
     ---------------------
     Date                 : May 2012
-    Copyright            : (C) 2012-2017 by Alexander Bruy
+    Copyright            : (C) 2012-2018 by Alexander Bruy
     Email                : alexander dot bruy at gmail dot com
 ***************************************************************************
 *                                                                         *
@@ -19,7 +19,7 @@
 
 __author__ = 'Alexander Bruy'
 __date__ = 'May 2012'
-__copyright__ = '(C) 2012-2017, Alexander Bruy'
+__copyright__ = '(C) 2012-2018, Alexander Bruy'
 
 # This will get replaced with a git SHA1 when you do a git archive
 
@@ -40,6 +40,16 @@ from processing_taudem.d8flowdir import D8FlowDir
 from processing_taudem.areadinf import AreaDinf
 from processing_taudem.dinfflowdir import DinfFlowDir
 from processing_taudem.gridnet import GridNet
+
+from processing_taudem.peukerdouglas import PeukerDouglas
+from processing_taudem.threshold import Threshold
+from processing_taudem.d8flowpathextremeup import D8FlowPathExtremeUp
+from processing_taudem.slopearea import SlopeArea
+from processing_taudem.lengtharea import LengthArea
+from processing_taudem.dropanalysis import DropAnalysis
+from processing_taudem.streamnet import StreamNet
+from processing_taudem.moveoutletstostreams import MoveOutletsToStreams
+from processing_taudem.gagewatershed import GageWatershed
 
 from processing_taudem import taudemUtils
 
@@ -113,6 +123,15 @@ class TauDemProvider(QgsProcessingProvider):
                 AreaDinf(),
                 DinfFlowDir(),
                 GridNet(),
+                PeukerDouglas(),
+                Threshold(),
+                D8FlowPathExtremeUp(),
+                SlopeArea(),
+                LengthArea(),
+                DropAnalysis(),
+                StreamNet(),
+                MoveOutletsToStreams(),
+                GageWatershed(),
                ]
 
         return algs

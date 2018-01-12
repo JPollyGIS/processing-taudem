@@ -1,117 +1,157 @@
 # -*- coding: utf-8 -*-
 
-#******************************************************************************
-#
-# TauDEM SEXTANTE Provider
-# ---------------------------------------------------------
-# A suite of Digital Elevation Model (DEM) tools for the extraction and
-# analysis of hydrologic information from topography as represented by
-# a DEM of vector layer.
-#
-# Copyright (C) 2012 Alexander Bruy (alexander.bruy@gmail.com)
-#
-# This source is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 2 of the License, or (at your option)
-# any later version.
-#
-# This code is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-# details.
-#
-# A copy of the GNU General Public License is available on the World Wide Web
-# at <http://www.gnu.org/licenses/>. You can also obtain it by writing
-# to the Free Software Foundation, 51 Franklin Street, Suite 500 Boston,
-# MA 02110-1335 USA.
-#
-#******************************************************************************
+"""
+***************************************************************************
+    dropanalysis.py
+    ---------------------
+    Date                 : June 2012
+    Copyright            : (C) 2012-2018 by Alexander Bruy
+    Email                : alexander dot bruy at gmail dot com
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+__author__ = 'Alexander Bruy'
+__date__ = 'June 2012'
+__copyright__ = '(C) 2012-2018, Alexander Bruy'
+
+# This will get replaced with a git SHA1 when you do a git archive
+
+__revision__ = '$Format:%H$'
 
 import os
+from collections import OrderedDict
 
-from PyQt4.QtGui import *
+from qgis.core import (QgsProcessing,
+                       QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterVectorLayer,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterEnum,
+                       QgsProcessingParameterFileDestination
+                      )
 
-from sextante.core.GeoAlgorithm import GeoAlgorithm
-from sextante.core.SextanteLog import SextanteLog
-from sextante.core.SextanteUtils import SextanteUtils
-from sextante.core.SextanteConfig import SextanteConfig
-from sextante.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
+from processing_taudem.taudemAlgorithm import TauDemAlgorithm
+from processing_taudem import taudemUtils
 
-from sextante.parameters.ParameterRaster import ParameterRaster
-from sextante.parameters.ParameterVector import ParameterVector
-from sextante.parameters.ParameterNumber import ParameterNumber
-from sextante.parameters.ParameterSelection import ParameterSelection
 
-from sextante.outputs.OutputFile import OutputFile
+class DropAnalysis(TauDemAlgorithm):
 
-from sextante_taudem.TauDEMUtils import TauDEMUtils
-
-class DropAnalysis(GeoAlgorithm):
-    PIT_FILLED_GRID = "PIT_FILLED_GRID"
-    D8_CONTRIB_AREA_GRID = "D8_CONTRIB_AREA_GRID"
-    D8_FLOW_DIR_GRID = "D8_FLOW_DIR_GRID"
-    ACCUM_STREAM_SOURCE_GRID = "ACCUM_STREAM_SOURCE_GRID"
-    OUTLETS_SHAPE = "OUTLETS_SHAPE"
+    PIT_FILLED = "PIT_FILLED"
+    D8_FLOWDIR = "D8_FLOWDIR"
+    D8_CONTRIB_AREA = "D8_CONTRIB_AREA"
+    ACCUM_STREAM_SOURCE = "ACCUM_STREAM_SOURCE"
+    OUTLETS = "OUTLETS"
     MIN_TRESHOLD = "MIN_TRESHOLD"
     MAX_THRESHOLD = "MAX_THRESHOLD"
-    TRESHOLD_NUM = "TRESHOLD_NUM"
-    STEP_TYPE = "STEP_TYPE"
+    DROP_TRESHOLDS = "DROP_TRESHOLDS"
+    STEP = "STEP"
+    DROP_ANALYSIS = "DROP_ANALYSIS"
 
-    DROP_ANALYSIS_FILE = "DROP_ANALYSIS_FILE"
+    def name(self):
+        return "dropanalysis"
 
-    STEPS = ["Logarithmic", "Linear"]
+    def displayName(self):
+        return self.tr("Stream drop analysis")
 
-    def getIcon(self):
-        return  QIcon(os.path.dirname(__file__) + "/icons/taudem.png")
+    def group(self):
+        return self.tr("Stream network analysis")
 
-    def defineCharacteristics(self):
-        self.name = "Stream Drop Analysis"
-        self.cmdName = "dropanalysis"
-        self.group = "Stream Network Analysis tools"
+    def groupId(self):
+        return "sreamnalysis"
 
-        self.addParameter(ParameterRaster(self.D8_CONTRIB_AREA_GRID, "D8 Contributing Area Grid", False))
-        self.addParameter(ParameterRaster(self.D8_FLOW_DIR_GRID, "D8 Flow Direction Grid", False))
-        self.addParameter(ParameterRaster(self.PIT_FILLED_GRID, "Pit Filled Elevation Grid", False))
-        self.addParameter(ParameterRaster(self.ACCUM_STREAM_SOURCE_GRID, "Contributing Area Grid", False))
-        self.addParameter(ParameterVector(self.OUTLETS_SHAPE, "Outlets Shapefile", ParameterVector.VECTOR_TYPE_POINT, False))
-        self.addParameter(ParameterNumber(self.MIN_TRESHOLD, "Minimum Threshold", 0, None, 5))
-        self.addParameter(ParameterNumber(self.MAX_THRESHOLD, "Maximum Threshold", 0, None, 500))
-        self.addParameter(ParameterNumber(self.TRESHOLD_NUM, "Number of Threshold Values", 0, None, 10))
-        self.addParameter(ParameterSelection(self.STEP_TYPE, "Spacing for Threshold Values", self.STEPS, 0))
-        self.addOutput(OutputFile(self.DROP_ANALYSIS_FILE, "D-Infinity Drop to Stream Grid"))
+    def tags(self):
+        return self.tr("dem,hydrology,stream,drop,statistics").split(",")
 
-    def processAlgorithm(self, progress):
-        commands.append(os.path.join(TauDEMUtils.mpiexecPath(), "mpiexec"))
+    def shortHelpString(self):
+        return self.tr("Applies a series of thresholds (determined from the "
+                       "input parameters) to the input accumulated stream "
+                       "source grid and outputs the results in the stream "
+                       "drop statistics table.")
 
-        processNum = SextanteConfig.getSetting(TauDEMUtils.MPI_PROCESSES)
-        if processNum <= 0:
-          raise GeoAlgorithmExecutionException("Wrong number of MPI processes used.\nPlease set correct number before running TauDEM algorithms.")
+    def helpUrl(self):
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/StreamDropAnalysis.html"
 
-        commands.append("-n")
-        commands.append(str(processNum))
-        commands.append(os.path.join(TauDEMUtils.taudemPath(), self.cmdName))
-        commands.append("-ad8")
-        commands.append(self.getParameterValue(self.D8_CONTRIB_AREA_GRID))
-        commands.append("-p")
-        commands.append(self.getParameterValue(self.D8_FLOW_DIR_GRID))
-        commands.append("-fel")
-        commands.append(self.getParameterValue(self.PIT_FILLED_GRID))
-        commands.append("-ssa")
-        commands.append(self.getParameterValue(self.ACCUM_STREAM_SOURCE_GRID))
-        commands.append("-o")
-        commands.append(self.getParameterValue(self.OUTLETS_SHAPE))
-        commands.append("-par")
-        commands.append(str(self.getParameterValue(self.MIN_TRESHOLD)))
-        commands.append(str(self.getParameterValue(self.MAX_THRESHOLD)))
-        commands.append(str(self.getParameterValue(self.TRESHOLD_NUM)))
-        commands.append(str(self.getParameterValue(self.STEPS)))
-        commands.append("-drp")
-        commands.append(self.getOutputValue(self.DROP_ANALYSIS_FILE))
+    def __init__(self):
+        super().__init__()
 
-        loglines = []
-        loglines.append("TauDEM execution command")
-        for line in commands:
-            loglines.append(line)
-        SextanteLog.addToLog(SextanteLog.LOG_INFO, loglines)
+    def initAlgorithm(self, config=None):
+        self.STEPS = OrderedDict([(self.tr("Logarithmic"), 0),
+                                  (self.tr("Arithmetic"), 1)])
 
-        TauDEMUtils.executeTauDEM(commands, progress)
+        self.addParameter(QgsProcessingParameterRasterLayer(self.PIT_FILLED,
+                                                            self.tr("Pit filled elevation")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.D8_FLOWDIR,
+                                                            self.tr("D8 flow directions")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.D8_CONTRIB_AREA,
+                                                            self.tr("D8 contributing area")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.ACCUM_STREAM_SOURCE,
+                                                            self.tr("Accumulated stream source")))
+        self.addParameter(QgsProcessingParameterVectorLayer(self.OUTLETS,
+                                                            self.tr("Outlets"),
+                                                            types=[QgsProcessing.TypeVectorPoint]))
+        self.addParameter(QgsProcessingParameterNumber(self.MIN_TRESHOLD,
+                                                       self.tr("Minimum threshold"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       5,
+                                                       False))
+        self.addParameter(QgsProcessingParameterNumber(self.MAX_THRESHOLD,
+                                                       self.tr("Maximum threshold"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       500,
+                                                       False))
+        self.addParameter(QgsProcessingParameterNumber(self.DROP_TRESHOLDS,
+                                                       self.tr("Number of drop thresholds"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       10,
+                                                       False))
+        keys = list(self.STEPS.keys())
+        kernel_shape_param = QgsProcessingParameterEnum(self.STEP,
+                                                        self.tr("Type of threshold step"),
+                                                        keys,
+                                                        allowMultiple=False,
+                                                        defaultValue=0)
+
+        self.addParameter(QgsProcessingParameterFileDestination(self.DROP_ANALYSIS,
+                                                                self.tr("Drop analysis"),
+                                                                self.tr("Text files (*.txt)")))
+
+    def processAlgorithm(self, parameters, context, feedback):
+        arguments = []
+        arguments.append(os.path.join(taudemUtils.taudemDirectory(), self.name()))
+
+        arguments.append("-fel")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.PIT_FILLED, context).source())
+        arguments.append("-p")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.D8_FLOWDIR, context).source())
+        arguments.append("-ad8")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.D8_CONTRIB_AREA, context).source())
+        arguments.append("-ssa")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.ACCUM_STREAM_SOURCE, context).source())
+        arguments.append("-o")
+        arguments.append(self.parameterAsVectorLayer(parameters, self.OUTLETS, context).source())
+
+        arguments.append("-par")
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.MIN_TRESHOLD, context)))
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.MAX_TRESHOLD, context)))
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.DROP_TRESHOLDS, context)))
+        arguments.append("{}".format(self.parameterAsEnum(parameters, self.STEP, context)))
+
+        outputFile = self.parameterAsFileOutput(parameters, self.DROP_ANALYSIS, context)
+        arguments.append("-drp")
+        arguments.append(outputFile)
+
+        taudemUtils.execute(arguments, feedback)
+
+        results = {}
+        for output in self.outputDefinitions():
+            outputName = output.name()
+            if outputName in parameters:
+                results[outputName] = parameters[outputName]
+
+        return results

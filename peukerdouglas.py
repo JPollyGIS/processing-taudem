@@ -1,96 +1,117 @@
 # -*- coding: utf-8 -*-
 
-#******************************************************************************
-#
-# TauDEM SEXTANTE Provider
-# ---------------------------------------------------------
-# A suite of Digital Elevation Model (DEM) tools for the extraction and
-# analysis of hydrologic information from topography as represented by
-# a DEM of vector layer.
-#
-# Copyright (C) 2012 Alexander Bruy (alexander.bruy@gmail.com)
-#
-# This source is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 2 of the License, or (at your option)
-# any later version.
-#
-# This code is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-# details.
-#
-# A copy of the GNU General Public License is available on the World Wide Web
-# at <http://www.gnu.org/licenses/>. You can also obtain it by writing
-# to the Free Software Foundation, 51 Franklin Street, Suite 500 Boston,
-# MA 02110-1335 USA.
-#
-#******************************************************************************
+"""
+***************************************************************************
+    peukerdouglas.py
+    ---------------------
+    Date                 : June 2012
+    Copyright            : (C) 2012-2018 by Alexander Bruy
+    Email                : alexander dot bruy at gmail dot com
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+__author__ = 'Alexander Bruy'
+__date__ = 'June 2012'
+__copyright__ = '(C) 2012-2018, Alexander Bruy'
+
+# This will get replaced with a git SHA1 when you do a git archive
+
+__revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4.QtGui import *
+from qgis.core import (QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterRasterDestination
+                      )
 
-from sextante.core.GeoAlgorithm import GeoAlgorithm
-from sextante.core.SextanteLog import SextanteLog
-from sextante.core.SextanteUtils import SextanteUtils
-from sextante.core.SextanteConfig import SextanteConfig
-from sextante.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
+from processing_taudem.taudemAlgorithm import TauDemAlgorithm
+from processing_taudem import taudemUtils
 
-from sextante.parameters.ParameterRaster import ParameterRaster
-from sextante.parameters.ParameterNumber import ParameterNumber
+class PeukerDouglas(TauDemAlgorithm):
 
-from sextante.outputs.OutputRaster import OutputRaster
-
-from sextante_taudem.TauDEMUtils import TauDEMUtils
-
-class PeukerDouglas(GeoAlgorithm):
-    ELEVATION_GRID = "ELEVATION_GRID"
+    PIT_FILLED = "PIT_FILLED"
     CENTER_WEIGHT = "CENTER_WEIGHT"
     SIDE_WEIGHT = "SIDE_WEIGHT"
     DIAGONAL_WEIGHT = "DIAGONAL_WEIGHT"
+    STREAM_SOURCE = "STREAM_SOURCE"
 
-    STREAM_SOURCE_GRID = "STREAM_SOURCE_GRID"
+    def name(self):
+        return "peukerdouglas"
 
-    def getIcon(self):
-        return  QIcon(os.path.dirname(__file__) + "/icons/taudem.png")
+    def displayName(self):
+        return self.tr("Peuker Douglas")
 
-    def defineCharacteristics(self):
-        self.name = "Peuker Douglas"
-        self.cmdName = "peukerdouglas"
-        self.group = "Stream Network Analysis tools"
+    def group(self):
+        return self.tr("Stream network analysis")
 
-        self.addParameter(ParameterRaster(self.ELEVATION_GRID, "Elevation Grid", False))
-        self.addParameter(ParameterNumber(self.CENTER_WEIGHT, "Center Smoothing Weight", 0, None, 0.4))
-        self.addParameter(ParameterNumber(self.SIDE_WEIGHT, "Side Smoothing Weight", 0, None, 0.1))
-        self.addParameter(ParameterNumber(self.DIAGONAL_WEIGHT, "Diagonal Smoothing Weight", 0, None, 0.05))
+    def groupId(self):
+        return "sreamnalysis"
 
-        self.addOutput(OutputRaster(self.STREAM_SOURCE_GRID, "Stream Source Grid"))
+    def tags(self):
+        return self.tr("dem,hydrology,smooth,peuker,douglas").split(",")
 
-    def processAlgorithm(self, progress):
-        commands = []
-        commands.append(os.path.join(TauDEMUtils.mpiexecPath(), "mpiexec"))
+    def shortHelpString(self):
+        return self.tr("Creates an indicator grid (1, 0) of valley form grid "
+                       "cells according to the Peuker and Douglas algorithm.")
 
-        processNum = SextanteConfig.getSetting(TauDEMUtils.MPI_PROCESSES)
-        if processNum <= 0:
-          raise GeoAlgorithmExecutionException("Wrong number of MPI processes used.\nPlease set correct number before running TauDEM algorithms.")
+    def helpUrl(self):
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/PeukerDouglas.html"
 
-        commands.append("-n")
-        commands.append(str(processNum))
-        commands.append(os.path.join(TauDEMUtils.taudemPath(), self.cmdName))
-        commands.append("-fel")
-        commands.append(self.getParameterValue(self.ELEVATION_GRID))
-        commands.append("-par")
-        commands.append(str(self.getParameterValue(self.CENTER_WEIGHT)))
-        commands.append(str(self.getParameterValue(self.SIDE_WEIGHT)))
-        commands.append(str(self.getParameterValue(self.DIAGONAL_WEIGHT)))
-        commands.append("-ss")
-        commands.append(self.getOutputValue(self.STREAM_SOURCE_GRID))
+    def __init__(self):
+        super().__init__()
 
-        loglines = []
-        loglines.append("TauDEM execution command")
-        for line in commands:
-            loglines.append(line)
-        SextanteLog.addToLog(SextanteLog.LOG_INFO, loglines)
+    def initAlgorithm(self, config=None):
+        self.addParameter(QgsProcessingParameterRasterLayer(self.PIT_FILLED,
+                                                            self.tr("Pit filled elevation")))
+        self.addParameter(QgsProcessingParameterNumber(self.CENTER_WEIGHT,
+                                                       self.tr("Center smoothing weight"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       0.4,
+                                                       False))
+        self.addParameter(QgsProcessingParameterNumber(self.SIDE_WEIGHT,
+                                                       self.tr("Side smoothing weight"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       0.1,
+                                                       False))
+        self.addParameter(QgsProcessingParameterNumber(self.DIAGONAL_WEIGHT,
+                                                       self.tr("Diagonal smoothing weight"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       0.05,
+                                                       False))
 
-        TauDEMUtils.executeTauDEM(commands, progress)
+        self.addParameter(QgsProcessingParameterRasterDestination(self.STREAM_SOURCE,
+                                                                  self.tr("D8 slope")))
+
+    def processAlgorithm(self, parameters, context, feedback):
+        arguments = []
+        arguments.append(os.path.join(taudemUtils.taudemDirectory(), self.name()))
+
+        arguments.append("-fel")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.PIT_FILLED, context).source())
+
+        arguments.append("-par")
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.CENTER_WEIGHT, context)))
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.SIDE_WEIGHT, context)))
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.DIAGONAL_WEIGHT, context)))
+
+        outputFile = self.parameterAsOutputLayer(parameters, self.STREAM_SOURCE, context)
+        arguments.append("-ss")
+        arguments.append(outputFile)
+
+        taudemUtils.execute(arguments, feedback)
+
+        results = {}
+        for output in self.outputDefinitions():
+            outputName = output.name()
+            if outputName in parameters:
+                results[outputName] = parameters[outputName]
+
+        return results

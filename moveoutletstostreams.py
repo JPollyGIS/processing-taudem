@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-    aread8.py
+    moveoutletstostreams.py
     ---------------------
     Date                 : January 2018
     Copyright            : (C) 2018 by Alexander Bruy
@@ -30,42 +30,45 @@ import os
 from qgis.core import (QgsProcessing,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterBoolean,
-                       QgsProcessingParameterRasterDestination
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterVectorDestination,
                       )
 
 from processing_taudem.taudemAlgorithm import TauDemAlgorithm
 from processing_taudem import taudemUtils
 
-class AreaD8(TauDemAlgorithm):
+
+class MoveOutletsToStreams(TauDemAlgorithm):
 
     D8_FLOWDIR = "D8_FLOWDIR"
-    WEIGHT_GRID = "WEIGHT_GRID"
+    STREAM_RASTER = "STREAM_RASTER"
     OUTLETS = "OUTLETS"
-    EDGE_CONTAMINATION = "EDGE_CONTAMINATION"
-    D8_CONTRIB_AREA = "D8_CONTRIB_AREA"
+    CELLS_TRAVERSE = "CELLS_TRAVERSE"
+    MOVED_OUTLETS = "MOVED_OUTLETS"
 
     def name(self):
-        return "aread8"
+        return "moveoutletstostreams"
 
     def displayName(self):
-        return self.tr("D8 contributing area")
+        return self.tr("Move outlets to Streams")
 
     def group(self):
-        return self.tr("Basic grid analysis")
+        return self.tr("Stream network analysis")
 
     def groupId(self):
-        return "basicanalysis"
+        return "sreamnalysis"
 
     def tags(self):
-        return self.tr("dem,hydrology,d8,contributing area,catchment area").split(",")
+        return self.tr("dem,hydrology,stream,outlet").split(",")
 
     def shortHelpString(self):
-        return self.tr("Calculates a grid of contributing areas using the "
-                       "single direction D8 flow model.")
+        return self.tr("Moves outlet points that are not aligned with "
+                       "a stream cell from a stream raster grid, downslope "
+                       "along the D8 flow direction until a stream raster "
+                       "cell is encountered.")
 
     def helpUrl(self):
-        return "http://hydrology.usu.edu/taudem/taudem5/help53/D8ContributingArea.html"
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/MoveOutletsToStreams.html"
 
     def __init__(self):
         super().__init__()
@@ -73,19 +76,21 @@ class AreaD8(TauDemAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(self.D8_FLOWDIR,
                                                             self.tr("D8 flow directions")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.STREAM_RASTER,
+                                                            self.tr("Stream raster")))
         self.addParameter(QgsProcessingParameterVectorLayer(self.OUTLETS,
                                                             self.tr("Outlets"),
                                                             types=[QgsProcessing.TypeVectorPoint],
-                                                            optional=True))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.WEIGHT_GRID,
-                                                            self.tr("Weight grid"),
-                                                            optional=True))
-        self.addParameter(QgsProcessingParameterBoolean(self.EDGE_CONTAMINATION,
-                                                        self.tr("Check for edge contamination"),
-                                                        defaultValue=False))
+                                                            optional=False))
+        self.addParameter(QgsProcessingParameterNumber(self.CELLS_TRAVERSE,
+                                                       self.tr("Maximum number of grid cells to traverse"),
+                                                       QgsProcessingParameterNumber.Integer,
+                                                       50,
+                                                       False))
 
-        self.addParameter(QgsProcessingParameterRasterDestination(self.D8_CONTRIB_AREA,
-                                                                  self.tr("D8 specific catchment area")))
+        self.addParameter(QgsProcessingParameterVectorDestination(self.MOVED_OUTLETS,
+                                                                  self.tr("Moved outlets"),
+                                                                  QgsProcessing.TypeVectorPoint))
 
     def processAlgorithm(self, parameters, context, feedback):
         arguments = []
@@ -93,23 +98,15 @@ class AreaD8(TauDemAlgorithm):
 
         arguments.append("-p")
         arguments.append(self.parameterAsRasterLayer(parameters, self.D8_FLOWDIR, context).source())
+        arguments.append("-src")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.STREAM_RASTER, context).source())
+        arguments.append("-o")
+        arguments.append(self.parameterAsVectorLayer(parameters, self.OUTLETS, context).source())
+        arguments.append("-md")
+        arguments.append("{}".format(self.parameterAsInt(parameters, self.CELLS_TRAVERSE, context)))
 
-        outlets = self.parameterAsVectorLayer(parameters, self.OUTLETS, context)
-        if outlets:
-            arguments.append("-o")
-            arguments.append(outlets.source())
-
-        weight = self.parameterAsRasterLayer(parameters, self.WEIGHT_GRID, context)
-        if weight:
-            arguments.append("-wg")
-            arguments.append(weight.source())
-
-        edgeContamination = self.parameterAsBool(parameters, self.EDGE_CONTAMINATION, context)
-        if edgeContamination:
-            arguments.append("-nc")
-
-        outputFile = self.parameterAsOutputLayer(parameters, self.D8_CONTRIB_AREA, context)
-        arguments.append("-ad8")
+        outputFile = self.parameterAsOutputLayer(parameters, self.MOVED_OUTLETS, context)
+        arguments.append("-om")
         arguments.append(outputFile)
 
         taudemUtils.execute(arguments, feedback)

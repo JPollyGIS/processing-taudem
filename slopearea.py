@@ -1,100 +1,117 @@
 # -*- coding: utf-8 -*-
 
-#******************************************************************************
-#
-# TauDEM SEXTANTE Provider
-# ---------------------------------------------------------
-# A suite of Digital Elevation Model (DEM) tools for the extraction and
-# analysis of hydrologic information from topography as represented by
-# a DEM of vector layer.
-#
-# Copyright (C) 2012 Alexander Bruy (alexander.bruy@gmail.com)
-#
-# This source is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 2 of the License, or (at your option)
-# any later version.
-#
-# This code is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-# details.
-#
-# A copy of the GNU General Public License is available on the World Wide Web
-# at <http://www.gnu.org/licenses/>. You can also obtain it by writing
-# to the Free Software Foundation, 51 Franklin Street, Suite 500 Boston,
-# MA 02110-1335 USA.
-#
-#******************************************************************************
+"""
+***************************************************************************
+    slopearea.py
+    ---------------------
+    Date                 : June 2012
+    Copyright            : (C) 2012-2018 by Alexander Bruy
+    Email                : alexander dot bruy at gmail dot com
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+__author__ = 'Alexander Bruy'
+__date__ = 'June 2012'
+__copyright__ = '(C) 2012-2018, Alexander Bruy'
+
+# This will get replaced with a git SHA1 when you do a git archive
+
+__revision__ = '$Format:%H$'
 
 import os
 
-from PyQt4.QtGui import *
+from qgis.core import (QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterRasterDestination
+                      )
 
-from sextante.core.GeoAlgorithm import GeoAlgorithm
-from sextante.core.SextanteLog import SextanteLog
-from sextante.core.SextanteUtils import SextanteUtils
-from sextante.core.SextanteConfig import SextanteConfig
-from sextante.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
+from processing_taudem.taudemAlgorithm import TauDemAlgorithm
+from processing_taudem import taudemUtils
 
-from sextante.parameters.ParameterRaster import ParameterRaster
-from sextante.parameters.ParameterNumber import ParameterNumber
 
-from sextante.outputs.OutputRaster import OutputRaster
+class SlopeArea(TauDemAlgorithm):
 
-from sextante_taudem.TauDEMUtils import TauDEMUtils
-
-class SlopeArea(GeoAlgorithm):
-    SLOPE_GRID = "SLOPE_GRID"
-    AREA_GRID = "AREA_GRID"
+    SLOPE = "SLOPE"
+    AREA = "AREA"
     SLOPE_EXPONENT = "SLOPE_EXPONENT"
     AREA_EXPONENT = "AREA_EXPONENT"
+    SLOPE_AREA = "SLOPE_AREA"
 
-    SLOPE_AREA_GRID = "SLOPE_AREA_GRID"
+    def name(self):
+        return "slopearea"
 
-    def getIcon(self):
-        return  QIcon(os.path.dirname(__file__) + "/icons/taudem.png")
+    def displayName(self):
+        return self.tr("Slope area combination")
 
-    def defineCharacteristics(self):
-        self.name = "Slope Area Combination"
-        self.cmdName = "slopearea"
-        self.group = "Stream Network Analysis tools"
+    def group(self):
+        return self.tr("Stream network analysis")
 
-        self.addParameter(ParameterRaster(self.SLOPE_GRID, "Slope Grid", False))
-        self.addParameter(ParameterRaster(self.AREA_GRID, "Contributing Area Grid", False))
-        self.addParameter(ParameterNumber(self.SLOPE_EXPONENT, "Slope Exponent", 0, None, 2))
-        self.addParameter(ParameterNumber(self.AREA_EXPONENT, "Area Exponent", 0, None, 1))
+    def groupId(self):
+        return "sreamnalysis"
 
-        self.addOutput(OutputRaster(self.SLOPE_AREA_GRID, "Slope Area Grid"))
+    def tags(self):
+        return self.tr("dem,hydrology,dem,threshold,compare").split(",")
 
-    def processAlgorithm(self, progress):
-        commands = []
-        commands.append(os.path.join(TauDEMUtils.mpiexecPath(), "mpiexec"))
+    def shortHelpString(self):
+        return self.tr("Creates a grid of slope-area values = (S^m)·(A^n) "
+                       "based on slope and specific catchment area grid "
+                       "inputs, and parameters m and n.")
 
-        processNum = SextanteConfig.getSetting(TauDEMUtils.MPI_PROCESSES)
-        if processNum <= 0:
-          raise GeoAlgorithmExecutionException("Wrong number of MPI processes used.\nPlease set correct number before running TauDEM algorithms.")
+    def helpUrl(self):
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/SlopeAreaCombination.html"
 
-        commands.append("-n")
-        commands.append(str(processNum))
-        commands.append(os.path.join(TauDEMUtils.taudemPath(), self.cmdName))
-        commands.append("-slp")
-        commands.append(self.getParameterValue(self.SLOPE_GRID))
-        commands.append("-sca")
-        commands.append(self.getParameterValue(self.AREA_GRID))
-        commands.append("-par")
-        commands.append(str(self.getParameterValue(self.SLOPE_EXPONENT)))
-        commands.append(str(self.getParameterValue(self.AREA_EXPONENT)))
-        commands.append("-sa")
-        commands.append(self.getOutputValue(self.SLOPE_AREA_GRID))
+    def __init__(self):
+        super().__init__()
 
-        loglines = []
-        loglines.append("TauDEM execution command")
-        for line in commands:
-            loglines.append(line)
-        SextanteLog.addToLog(SextanteLog.LOG_INFO, loglines)
+    def initAlgorithm(self, config=None):
+        self.addParameter(QgsProcessingParameterRasterLayer(self.SLOPE,
+                                                            self.tr("Slope")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.AREA,
+                                                            self.tr("Area")))
+        self.addParameter(QgsProcessingParameterNumber(self.SLOPE_EXPONENT,
+                                                       self.tr("Slope exponent"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       2.0,
+                                                       False))
+        self.addParameter(QgsProcessingParameterNumber(self.AREA_EXPONENT,
+                                                       self.tr("Area exponent"),
+                                                       QgsProcessingParameterNumber.Double,
+                                                       1.0,
+                                                       False))
 
-        TauDEMUtils.executeTauDEM(commands, progress)
+        self.addParameter(QgsProcessingParameterRasterDestination(self.SLOPE_AREA,
+                                                                  self.tr("Slope area")))
 
-    def helpFile(self):
-        return os.path.join(os.path.dirname(__file__), "help", self.cmdName + ".html")
+    def processAlgorithm(self, parameters, context, feedback):
+        arguments = []
+        arguments.append(os.path.join(taudemUtils.taudemDirectory(), self.name()))
+
+        arguments.append("-slp")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.SLOPE, context).source())
+        arguments.append("-sca")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.AREA, context).source())
+
+        arguments.append("-par")
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.SLOPE_EXPONENT, context)))
+        arguments.append("{}".format(self.parameterAsDouble(parameters, self.AREA_EXPONENT, context)))
+
+        outputFile = self.parameterAsOutputLayer(parameters, self.SLOPE_AREA, context)
+        arguments.append("-sa")
+        arguments.append(outputFile)
+
+        taudemUtils.execute(arguments, feedback)
+
+        results = {}
+        for output in self.outputDefinitions():
+            outputName = output.name()
+            if outputName in parameters:
+                results[outputName] = parameters[outputName]
+
+        return results

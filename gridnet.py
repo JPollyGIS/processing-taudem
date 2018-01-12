@@ -109,7 +109,7 @@ class GridNet(TauDemAlgorithm):
             arguments.append("-mask")
             arguments.append(weight.source())
             arguments.append("-thresh")
-            arguments.append(self.parameterAsDouble(parameters, self.THRESHOLD, context))
+            arguments.append("{}".format(self.parameterAsDouble(parameters, self.THRESHOLD, context)))
 
         outlets = self.parameterAsVectorLayer(parameters, self.OUTLETS, context)
         if outlets:

@@ -2,7 +2,7 @@
 
 """
 ***************************************************************************
-    aread8.py
+    gagewatershed.py
     ---------------------
     Date                 : January 2018
     Copyright            : (C) 2018 by Alexander Bruy
@@ -30,42 +30,41 @@ import os
 from qgis.core import (QgsProcessing,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterBoolean,
-                       QgsProcessingParameterRasterDestination
+                       QgsProcessingParameterRasterDestination,
+                       QgsProcessingParameterFileDestination
                       )
 
 from processing_taudem.taudemAlgorithm import TauDemAlgorithm
 from processing_taudem import taudemUtils
 
-class AreaD8(TauDemAlgorithm):
+
+class GageWatershed(TauDemAlgorithm):
 
     D8_FLOWDIR = "D8_FLOWDIR"
-    WEIGHT_GRID = "WEIGHT_GRID"
     OUTLETS = "OUTLETS"
-    EDGE_CONTAMINATION = "EDGE_CONTAMINATION"
-    D8_CONTRIB_AREA = "D8_CONTRIB_AREA"
+    GAGE_WATERSHED = "GAGE_WATERSHED"
+    WATERSHED_CONNECTIVITY = "WATERSHED_CONNECTIVITY"
 
     def name(self):
-        return "aread8"
+        return "gagewatershed"
 
     def displayName(self):
-        return self.tr("D8 contributing area")
+        return self.tr("Gage watershed")
 
     def group(self):
-        return self.tr("Basic grid analysis")
+        return self.tr("Stream network analysis")
 
     def groupId(self):
-        return "basicanalysis"
+        return "sreamnalysis"
 
     def tags(self):
-        return self.tr("dem,hydrology,d8,contributing area,catchment area").split(",")
+        return self.tr("dem,hydrology,gage,watershed").split(",")
 
     def shortHelpString(self):
-        return self.tr("Calculates a grid of contributing areas using the "
-                       "single direction D8 flow model.")
+        return self.tr("Calculates Gage watersheds grid.")
 
     def helpUrl(self):
-        return "http://hydrology.usu.edu/taudem/taudem5/help53/D8ContributingArea.html"
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/GageWatershed.html"
 
     def __init__(self):
         super().__init__()
@@ -76,16 +75,14 @@ class AreaD8(TauDemAlgorithm):
         self.addParameter(QgsProcessingParameterVectorLayer(self.OUTLETS,
                                                             self.tr("Outlets"),
                                                             types=[QgsProcessing.TypeVectorPoint],
-                                                            optional=True))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.WEIGHT_GRID,
-                                                            self.tr("Weight grid"),
-                                                            optional=True))
-        self.addParameter(QgsProcessingParameterBoolean(self.EDGE_CONTAMINATION,
-                                                        self.tr("Check for edge contamination"),
-                                                        defaultValue=False))
+                                                            optional=False))
 
-        self.addParameter(QgsProcessingParameterRasterDestination(self.D8_CONTRIB_AREA,
-                                                                  self.tr("D8 specific catchment area")))
+        self.addParameter(QgsProcessingParameterRasterDestination(self.GAGE_WATERSHED,
+                                                                  self.tr("Gage watershed")))
+        self.addParameter(QgsProcessingParameterFileDestination(self.WATERSHED_CONNECTIVITY,
+                                                                self.tr("Watershed downslope connectivity"),
+                                                                self.tr("Text files (*.txt)"),
+                                                                optional=True))
 
     def processAlgorithm(self, parameters, context, feedback):
         arguments = []
@@ -93,24 +90,17 @@ class AreaD8(TauDemAlgorithm):
 
         arguments.append("-p")
         arguments.append(self.parameterAsRasterLayer(parameters, self.D8_FLOWDIR, context).source())
+        arguments.append("-o")
+        arguments.append(self.parameterAsVectorLayer(parameters, self.OUTLETS, context).source())
 
-        outlets = self.parameterAsVectorLayer(parameters, self.OUTLETS, context)
-        if outlets:
-            arguments.append("-o")
-            arguments.append(outlets.source())
-
-        weight = self.parameterAsRasterLayer(parameters, self.WEIGHT_GRID, context)
-        if weight:
-            arguments.append("-wg")
-            arguments.append(weight.source())
-
-        edgeContamination = self.parameterAsBool(parameters, self.EDGE_CONTAMINATION, context)
-        if edgeContamination:
-            arguments.append("-nc")
-
-        outputFile = self.parameterAsOutputLayer(parameters, self.D8_CONTRIB_AREA, context)
-        arguments.append("-ad8")
+        outputFile = self.parameterAsOutputLayer(parameters, self.GAGE_WATERSHED, context)
+        arguments.append("-gw")
         arguments.append(outputFile)
+
+        outputFile = self.parameterAsFileOutput(parameters, self.WATERSHED_CONNECTIVITY, context)
+        if outputFile:
+            arguments.append("-id")
+            arguments.append(outputFile)
 
         taudemUtils.execute(arguments, feedback)
 
