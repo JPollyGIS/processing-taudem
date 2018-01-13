@@ -2,16 +2,16 @@ To use this plugin you need to install TauDEM command line tools.
 
 Windows
 -------
-Please visit TauDEM homepage http://hydrology.usu.edu/taudem/taudem5/index.html
+Please visit TauDEM homepage http://hydrology.usu.edu/taudem/taudem5/
 for installation instructions and precompiled binaries for 32- and 64-bit
 systems.
 
 Linux
 -----
 There are no packages for most Linux distribution, so you should compile TauDEM
-by yourself. As TauDEM uses MPICH2 first install it using your favorite package
-manager. Also TauDEM works fine with OpenMPI, so you can use it instead of
-MPICH2.
+by yourself. As TauDEM uses MPICH2, first install it using your favorite
+package manager. Also TauDEM works fine with OpenMPI, so you can use it instead
+of MPICH2.
 
 Download TauDEM source code from GitHub https://github.com/dtarb/TauDEM and
 extract it in some folder. Open terminal window and go to the extracted TauDEM
