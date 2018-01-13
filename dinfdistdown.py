@@ -1,123 +1,150 @@
 # -*- coding: utf-8 -*-
 
-#******************************************************************************
-#
-# TauDEM SEXTANTE Provider
-# ---------------------------------------------------------
-# A suite of Digital Elevation Model (DEM) tools for the extraction and
-# analysis of hydrologic information from topography as represented by
-# a DEM of vector layer.
-#
-# Copyright (C) 2012 Alexander Bruy (alexander.bruy@gmail.com)
-#
-# This source is free software; you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 2 of the License, or (at your option)
-# any later version.
-#
-# This code is distributed in the hope that it will be useful, but WITHOUT ANY
-# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-# details.
-#
-# A copy of the GNU General Public License is available on the World Wide Web
-# at <http://www.gnu.org/licenses/>. You can also obtain it by writing
-# to the Free Software Foundation, 51 Franklin Street, Suite 500 Boston,
-# MA 02110-1335 USA.
-#
-#******************************************************************************
+"""
+***************************************************************************
+    dinfdistdown.py
+    ---------------------
+    Date                 : June 2012
+    Copyright            : (C) 2012-2018 by Alexander Bruy
+    Email                : alexander dot bruy at gmail dot com
+***************************************************************************
+*                                                                         *
+*   This program is free software; you can redistribute it and/or modify  *
+*   it under the terms of the GNU General Public License as published by  *
+*   the Free Software Foundation; either version 2 of the License, or     *
+*   (at your option) any later version.                                   *
+*                                                                         *
+***************************************************************************
+"""
+
+__author__ = 'Alexander Bruy'
+__date__ = 'June 2012'
+__copyright__ = '(C) 2012-2018, Alexander Bruy'
+
+# This will get replaced with a git SHA1 when you do a git archive
+
+__revision__ = '$Format:%H$'
 
 import os
+from collections import OrderedDict
 
-from PyQt4.QtGui import *
+from qgis.core import (QgsProcessingParameterRasterLayer,
+                       QgsProcessingParameterEnum,
+                       QgsProcessingParameterBoolean,
+                       QgsProcessingParameterRasterDestination
+                      )
+from processing_taudem.taudemAlgorithm import TauDemAlgorithm
+from processing_taudem import taudemUtils
 
-from sextante.core.GeoAlgorithm import GeoAlgorithm
-from sextante.core.SextanteLog import SextanteLog
-from sextante.core.SextanteUtils import SextanteUtils
-from sextante.core.SextanteConfig import SextanteConfig
-from sextante.core.GeoAlgorithmExecutionException import GeoAlgorithmExecutionException
 
-from sextante.parameters.ParameterRaster import ParameterRaster
-from sextante.parameters.ParameterBoolean import ParameterBoolean
-from sextante.parameters.ParameterSelection import ParameterSelection
+class DinfDistDown(TauDemAlgorithm):
 
-from sextante.outputs.OutputRaster import OutputRaster
+    PIT_FILLED = "PIT_FILLED"
+    DINF_FLOWDIR = "DINF_FLOWDIR"
+    STREAM_RASTER = "STREAM_RASTER"
+    WEIGHT_GRID = "WEIGHT_GRID"
+    STATISTICAL_METHOD = "STATISTICAL_METHOD"
+    DISTANCE_METHOD = "DISTANCE_METHOD"
+    EDGE_CONTAMINATION = "EDGE_CONTAMINATION"
+    DISTANCE_DOWN = "DISTANCE_DOWN"
 
-from sextante_taudem.TauDEMUtils import TauDEMUtils
+    def name(self):
+        return "dinfdistdown"
 
-class DinfDistDown(GeoAlgorithm):
-    DINF_FLOW_DIR_GRID = "DINF_FLOW_DIR_GRID"
-    PIT_FILLED_GRID = "PIT_FILLED_GRID"
-    STREAM_GRID = "STREAM_GRID"
-    WEIGHT_PATH_GRID = "WEIGHT_PATH_GRID"
-    STAT_METHOD = "STAT_METHOD"
-    DIST_METHOD = "DIST_METHOD"
-    EDGE_CONTAM = "EDGE_CONTAM"
+    def displayName(self):
+        return self.tr("D-infinity distance down")
 
-    DIST_DOWN_GRID = "DIST_DOWN_GRID"
+    def group(self):
+        return self.tr("Specialized grid analysis")
 
-    STATISTICS = ["Minimum", "Maximum", "Average"]
-    STAT_DICT = {0:"min",
-                 1:"max",
-                 2:"ave"}
+    def groupId(self):
+        return "specializedalysis"
 
-    DISTANCE = ["Pythagoras", "Horizontal", "Vertical", "Surface"]
-    DIST_DICT = {0:"p",
-                 1:"h",
-                 2:"v",
-                 3:"s"}
+    def tags(self):
+        return self.tr("dem,hydrology,d-infinity,downslope,distance").split(",")
 
-    def getIcon(self):
-        return  QIcon(os.path.dirname(__file__) + "/icons/taudem.png")
+    def shortHelpString(self):
+        return self.tr("Calculates the distance downslope to a stream using "
+                       "the D-infinity flow model.")
 
-    def defineCharacteristics(self):
-        self.name = "D-Infinity Distance Down"
-        self.cmdName = "dinfdistdown"
-        self.group = "Specialized Grid Analysis tools"
+    def helpUrl(self):
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/DInfinityDistanceDown.html"
 
-        self.addParameter(ParameterRaster(self.DINF_FLOW_DIR_GRID, "D-Infinity Flow Direction Grid", False))
-        self.addParameter(ParameterRaster(self.PIT_FILLED_GRID, "Pit Filled Elevation Grid", False))
-        self.addParameter(ParameterRaster(self.STREAM_GRID, "Stream Raster Grid", False))
-        self.addParameter(ParameterRaster(self.WEIGHT_PATH_GRID, "Weight Path Grid", True))
-        self.addParameter(ParameterSelection(self.STAT_METHOD, "Statistical Method", self.STATISTICS, 2))
-        self.addParameter(ParameterSelection(self.DIST_METHOD, "Distance Method", self.DISTANCE, 1))
-        self.addParameter(ParameterBoolean(self.EDGE_CONTAM, "Check for edge contamination", True))
+    def __init__(self):
+        super().__init__()
 
-        self.addOutput(OutputRaster(self.DIST_DOWN_GRID, "D-Infinity Drop to Stream Grid"))
+    def initAlgorithm(self, config=None):
+        self.statisticalMethods = OrderedDict([(self.tr("Average"), "ave"),
+                                               (self.tr("Minimum"), "min"),
+                                               (self.tr("Maximum"), "max")])
 
-    def processAlgorithm(self, progress):
-        commands = []
-        commands.append(os.path.join(TauDEMUtils.mpiexecPath(), "mpiexec"))
+        self.distanceMethods = OrderedDict([(self.tr("Horizontal"), "h"),
+                                            (self.tr("Vertical"), "v"),
+                                            (self.tr("Pythagoras"), "p"),
+                                            (self.tr("Surface"), "s")])
 
-        processNum = SextanteConfig.getSetting(TauDEMUtils.MPI_PROCESSES)
-        if processNum <= 0:
-          raise GeoAlgorithmExecutionException("Wrong number of MPI processes used.\nPlease set correct number before running TauDEM algorithms.")
+        self.addParameter(QgsProcessingParameterRasterLayer(self.PIT_FILLED,
+                                                            self.tr("Pit filled elevation")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.DINF_FLOWDIR,
+                                                            self.tr("D-infinity flow directions")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.STREAM_RASTER,
+                                                            self.tr("Stream raster")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.WEIGHT_GRID,
+                                                            self.tr("Weight grid"),
+                                                            optional=True))
+        self.addParameter(QgsProcessingParameterEnum(self.STATISTICAL_METHOD,
+                                                     self.tr("Statistical method"),
+                                                     options=[i[0] for i in self.statisticalMethods],
+                                                     allowMultiple=False,
+                                                     defaultValue=0))
+        self.addParameter(QgsProcessingParameterEnum(self.DISTANCE_METHOD,
+                                                     self.tr("Distance method"),
+                                                     options=[i[0] for i in self.distanceMethods],
+                                                     allowMultiple=False,
+                                                     defaultValue=0))
+        self.addParameter(QgsProcessingParameterBoolean(self.EDGE_CONTAMINATION,
+                                                        self.tr("Check for edge contamination"),
+                                                        defaultValue=False))
 
-        commands.append("-n")
-        commands.append(str(processNum))
-        commands.append(os.path.join(TauDEMUtils.taudemPath(), self.cmdName))
-        commands.append("-ang")
-        commands.append(self.getParameterValue(self.DINF_FLOW_DIR_GRID))
-        commands.append("-fel")
-        commands.append(self.getParameterValue(self.PIT_FILLED_GRID))
-        commands.append("-src")
-        commands.append(self.getParameterValue(self.STREAM_GRID))
-        wg = self.getParameterValue(self.WEIGHT_PATH_GRID)
-        if wg is not None:
-          commands.append("-wg")
-          commands.append(self.getParameterValue(self.WEIGHT_PATH_GRID))
-        commands.append("-m")
-        commands.append(str(self.STAT_DICT[self.getParameterValue(self.STAT_METHOD)]))
-        commands.append(str(self.DIST_DICT[self.getParameterValue(self.DIST_METHOD)]))
-        if str(self.getParameterValue(self.EDGE_CONTAM)).lower() == "false":
-            commands.append("-nc")
-        commands.append("-dd")
-        commands.append(self.getOutputValue(self.DIST_DOWN_GRID))
+        self.addParameter(QgsProcessingParameterRasterDestination(self.DISTANCE_DOWN,
+                                                                  self.tr("D-infinity drop to stream")))
 
-        loglines = []
-        loglines.append("TauDEM execution command")
-        for line in commands:
-            loglines.append(line)
-        SextanteLog.addToLog(SextanteLog.LOG_INFO, loglines)
+    def processAlgorithm(self, parameters, context, feedback):
+        arguments = []
+        arguments.append(os.path.join(taudemUtils.taudemDirectory(), self.name()))
 
-        TauDEMUtils.executeTauDEM(commands, progress)
+        arguments.append("-fel")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.PIT_FILLED, context).source())
+        arguments.append("-ang")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.DINF_FLOWDIR, context).source())
+        arguments.append("-src")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.STREAM_RASTER, context).source())
+
+        weight = self.parameterAsRasterLayer(parameters, self.WEIGHT_GRID, context)
+        if weight:
+            arguments.append("-wg")
+            arguments.append(weight.source())
+
+        statMethod = self.statiscitalMethods[self.parameterAsEnum(parameters, self.STATISTICAL_METHOD, context)][1]
+        distMethod = self.statiscitalMethods[self.parameterAsEnum(parameters, self.DISTANCE_METHOD, context)][1]
+        arguments.append("-m")
+        arguments.append(statMethod)
+        arguments.append(distMethod)
+
+        edgeContamination = self.parameterAsBool(parameters, self.EDGE_CONTAMINATION, context)
+        if edgeContamination:
+            arguments.append("-nc")
+
+        outputFile = self.parameterAsOutputLayer(parameters, self.DISTANCE_DOWN, context)
+        arguments.append("-dd")
+        arguments.append(outputFile)
+
+        taudemUtils.execute(arguments, feedback)
+
+        results = {}
+        for output in self.outputDefinitions():
+            outputName = output.name()
+            if outputName in parameters:
+                results[outputName] = parameters[outputName]
+
+        return results

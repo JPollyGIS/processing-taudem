@@ -2,10 +2,10 @@
 
 """
 ***************************************************************************
-    dinftranslimaccum.py
+    dinfdecayaccum.py
     ---------------------
-    Date                 : June 2012
-    Copyright            : (C) 2012-2018 by Alexander Bruy
+    Date                 : January 2018
+    Copyright            : (C) 2018 by Alexander Bruy
     Email                : alexander dot bruy at gmail dot com
 ***************************************************************************
 *                                                                         *
@@ -18,8 +18,8 @@
 """
 
 __author__ = 'Alexander Bruy'
-__date__ = 'June 2012'
-__copyright__ = '(C) 2012-2018, Alexander Bruy'
+__date__ = 'January 2018'
+__copyright__ = '(C) 2018, Alexander Bruy'
 
 # This will get replaced with a git SHA1 when you do a git archive
 
@@ -28,10 +28,8 @@ __revision__ = '$Format:%H$'
 import os
 
 from qgis.core import (QgsProcessing,
-                       QgsProcessingException,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterVectorLayer,
-                       QgsProcessingParameterNumber,
                        QgsProcessingParameterBoolean,
                        QgsProcessingParameterRasterDestination
                       )
@@ -39,23 +37,20 @@ from processing_taudem.taudemAlgorithm import TauDemAlgorithm
 from processing_taudem import taudemUtils
 
 
-class DinfTransLimAccum(TauDemAlgorithm):
+class DinfDecayAccum(TauDemAlgorithm):
 
     DINF_FLOWDIR = "DINF_FLOWDIR"
-    TRANSPORT_SUPPLY = "TRANSPORT_SUPPLY"
-    TRANSPORT_CAPACITY = "TRANSPORT_CAPACITY"
-    INPUT_CONCENTRATION = "INPUT_CONCENTRATION"
+    DECAY_MULTIPLIER = "DECAY_MULTIPLIER"
+    WEIGHT_GRID = "WEIGHT_GRID"
     OUTLETS = "OUTLETS"
     EDGE_CONTAMINATION = "EDGE_CONTAMINATION"
-    TRANLIM_ACCUM = "TRANSLIM_ACCUM"
-    DEPOSITION = "DEPOSITION"
-    OUTPUT_CONCENTRATION = "OUTPUT_CONCENTRATION"
+    DECAYED_AREA = "DECAYED_AREA"
 
     def name(self):
-        return "dinftranslimaccum"
+        return "dinfdecayaccum"
 
     def displayName(self):
-        return self.tr("D-infinity transport limited accumulation")
+        return self.tr("D-infinity decaying accumulation")
 
     def group(self):
         return self.tr("Specialized grid analysis")
@@ -64,15 +59,16 @@ class DinfTransLimAccum(TauDemAlgorithm):
         return "specializedalysis"
 
     def tags(self):
-        return self.tr("dem,hydrology,d-infinity,transport,deposition").split(",")
+        return self.tr("dem,hydrology,d8,stream,distance").split(",")
 
     def shortHelpString(self):
-        return self.tr("Calculates the transport and deposition of a substance "
-                       "(e.g. sediment) that may be limited by both supply and "
-                       "the capacity of the flow field to transport it.")
+        return self.tr("Creates a grid of the accumulated quantity at each "
+                       "location in the domain where the quantity accumulates "
+                       "with the D-infinity flow field, but is subject to "
+                       "first order decay in moving from cell to cell.")
 
     def helpUrl(self):
-        return "http://hydrology.usu.edu/taudem/taudem5/help53/DInfinityTransportLimitedAccumulation.html"
+        return "http://hydrology.usu.edu/taudem/taudem5/help53/DInfinityDecayingAccumulation.html"
 
     def __init__(self):
         super().__init__()
@@ -80,12 +76,10 @@ class DinfTransLimAccum(TauDemAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(self.DINF_FLOWDIR,
                                                             self.tr("D-infinity flow directions")))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.TRANSPORT_SUPPLY,
-                                                            self.tr("Transport supply")))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.TRANSPORT_CAPACITY,
-                                                            self.tr("Transport capacity")))
-        self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_CONCENTRATION,
-                                                            self.tr("Input concentration"),
+        self.addParameter(QgsProcessingParameterRasterLayer(self.DECAY_MULTIPLIER,
+                                                            self.tr("Decay multiplier")))
+        self.addParameter(QgsProcessingParameterRasterLayer(self.WEIGHT_GRID,
+                                                            self.tr("Weight grid"),
                                                             optional=True))
         self.addParameter(QgsProcessingParameterVectorLayer(self.OUTLETS,
                                                             self.tr("Outlets"),
@@ -95,13 +89,8 @@ class DinfTransLimAccum(TauDemAlgorithm):
                                                         self.tr("Check for edge contamination"),
                                                         defaultValue=False))
 
-        self.addParameter(QgsProcessingParameterRasterDestination(self.TRANLIM_ACCUM,
-                                                                  self.tr("Transport limited accumulation")))
-        self.addParameter(QgsProcessingParameterRasterDestination(self.DEPOSITION,
-                                                                  self.tr("Deposition")))
-        self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT_CONCENTRATION,
-                                                                  self.tr("Output concentration"),
-                                                                  optional=True))
+        self.addParameter(QgsProcessingParameterRasterDestination(self.DECAYED_AREA,
+                                                                  self.tr("Decayed specific catchment area")))
 
     def processAlgorithm(self, parameters, context, feedback):
         arguments = []
@@ -109,22 +98,13 @@ class DinfTransLimAccum(TauDemAlgorithm):
 
         arguments.append("-ang")
         arguments.append(self.parameterAsRasterLayer(parameters, self.DINF_FLOWDIR, context).source())
-        arguments.append("-tsup")
-        arguments.append(self.parameterAsRasterLayer(parameters, self.TRANSPORT_SUPPLY, context).source())
-        arguments.append("-tc")
-        arguments.append(self.parameterAsRasterLayer(parameters, self.TRANSPORT_CAPACITY, context).source())
+        arguments.append("-dm")
+        arguments.append(self.parameterAsRasterLayer(parameters, self.DECAY_MULTIPLIER, context).source())
 
-        concentration = self.parameterAsRasterLayer(parameters, self.INPUT_CONCENTRATION, context)
-        if concentration:
-            arguments.append("-cs")
-            arguments.append(concentration.source())
-
-            concentration = self.parameterAsOutputLayer(parameters, self.OUTPUT_CONCENTRATION, context)
-            if concentration:
-                arguments.append("-ctpt")
-                arguments.append(concentration.source())
-            else:
-                raise QgsProcessingException(self.tr("Output concentration is not set."))
+        weight = self.parameterAsRasterLayer(parameters, self.WEIGHT_GRID, context)
+        if weight:
+            arguments.append("-wg")
+            arguments.append(weight.source())
 
         outlets = self.parameterAsVectorLayer(parameters, self.OUTLETS, context)
         if outlets:
@@ -135,12 +115,8 @@ class DinfTransLimAccum(TauDemAlgorithm):
         if edgeContamination:
             arguments.append("-nc")
 
-        outputFile = self.parameterAsOutputLayer(parameters, self.TRANLIM_ACCUM, context)
-        arguments.append("-tla")
-        arguments.append(outputFile)
-
-        outputFile = self.parameterAsOutputLayer(parameters, self.DEPOSITION, context)
-        arguments.append("-tdep")
+        outputFile = self.parameterAsOutputLayer(parameters, self.DECAYED_AREA, context)
+        arguments.append("-dsca")
         arguments.append(outputFile)
 
         taudemUtils.execute(arguments, feedback)

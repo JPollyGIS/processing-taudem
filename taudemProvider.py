@@ -51,6 +51,18 @@ from processing_taudem.streamnet import StreamNet
 from processing_taudem.moveoutletstostreams import MoveOutletsToStreams
 from processing_taudem.gagewatershed import GageWatershed
 
+from processing_taudem.slopearearatio import SlopeAreaRatio
+from processing_taudem.d8hdisttostrm import D8HDistToStrm
+from processing_taudem.dinfupdependence import DinfUpDependence
+from processing_taudem.dinfdecayaccum import DinfDecayAccum
+from processing_taudem.dinfconclimaccum import DinfConcLimAccum
+from processing_taudem.dinftranslimaccum import DinfTransLimAccum
+from processing_taudem.dinfrevaccum import DinfRevAccum
+from processing_taudem.dinfdistdown import DinfDistDown
+from processing_taudem.dinfdistup import DinfDistUp
+from processing_taudem.dinfavalanche import DinfAvalanche
+from processing_taudem.slopeavedown import SlopeAveDown
+
 from processing_taudem import taudemUtils
 
 pluginPath = os.path.dirname(__file__)
@@ -123,6 +135,7 @@ class TauDemProvider(QgsProcessingProvider):
                 AreaDinf(),
                 DinfFlowDir(),
                 GridNet(),
+
                 PeukerDouglas(),
                 Threshold(),
                 D8FlowPathExtremeUp(),
@@ -132,6 +145,18 @@ class TauDemProvider(QgsProcessingProvider):
                 StreamNet(),
                 MoveOutletsToStreams(),
                 GageWatershed(),
+
+                SlopeAreaRatio(),
+                D8HDistToStrm(),
+                DinfUpDependence(),
+                DinfDecayAccum(),
+                DinfConcLimAccum(),
+                DinfTransLimAccum(),
+                DinfRevAccum(),
+                DinfDistDown(),
+                DinfDistUp(),
+                DinfAvalanche(),
+                SlopeAveDown(),
                ]
 
         return algs
