@@ -43,7 +43,7 @@ class PitRemove(TauDemAlgorithm):
     PIT_FILLED = "PIT_FILLED"
 
     def name(self):
-        return 'pitremove'
+        return "pitremove"
 
     def displayName(self):
         return self.tr("Pit remove")

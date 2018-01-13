@@ -64,7 +64,7 @@ class StreamNet(TauDemAlgorithm):
         return self.tr("Stream network analysis")
 
     def groupId(self):
-        return "sreamnalysis"
+        return "streamanalysis"
 
     def tags(self):
         return self.tr("dem,hydrology,dem,stream,network,watershed").split(",")
@@ -101,7 +101,7 @@ class StreamNet(TauDemAlgorithm):
         self.addParameter(QgsProcessingParameterRasterDestination(self.WATERSHED,
                                                                   self.tr("Watershed")))
         self.addParameter(QgsProcessingParameterVectorDestination(self.STREAM_REACH,
-                                                                  self.tr('Channel network'),
+                                                                  self.tr("Channel network"),
                                                                   QgsProcessing.TypeVectorLine))
         self.addParameter(QgsProcessingParameterFileDestination(self.NETWORK_CONNECTIVITY,
                                                                 self.tr("Network connectivity tree"),

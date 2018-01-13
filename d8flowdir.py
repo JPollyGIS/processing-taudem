@@ -41,7 +41,7 @@ class D8FlowDir(TauDemAlgorithm):
     D8_SLOPE = "D8_SLOPE"
 
     def name(self):
-        return 'd8flowdir'
+        return "d8flowdir"
 
     def displayName(self):
         return self.tr("D8 flow directions")

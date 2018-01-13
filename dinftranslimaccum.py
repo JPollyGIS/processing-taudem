@@ -61,7 +61,7 @@ class DinfTransLimAccum(TauDemAlgorithm):
         return self.tr("Specialized grid analysis")
 
     def groupId(self):
-        return "specializedalysis"
+        return "specializedanalysis"
 
     def tags(self):
         return self.tr("dem,hydrology,d-infinity,transport,deposition").split(",")

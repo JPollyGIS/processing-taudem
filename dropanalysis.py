@@ -63,7 +63,7 @@ class DropAnalysis(TauDemAlgorithm):
         return self.tr("Stream network analysis")
 
     def groupId(self):
-        return "sreamnalysis"
+        return "streamanalysis"
 
     def tags(self):
         return self.tr("dem,hydrology,stream,drop,statistics").split(",")

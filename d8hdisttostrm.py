@@ -4,7 +4,7 @@
 ***************************************************************************
     d8hdisttostrm.py
     ---------------------
-    Date                 : January 2012
+    Date                 : January 2018
     Copyright            : (C) 2018 by Alexander Bruy
     Email                : alexander dot bruy at gmail dot com
 ***************************************************************************
@@ -54,7 +54,7 @@ class D8HDistToStrm(TauDemAlgorithm):
         return self.tr("Specialized grid analysis")
 
     def groupId(self):
-        return "specializedalysis"
+        return "specializedanalysis"
 
     def tags(self):
         return self.tr("dem,hydrology,d8,stream,distance").split(",")

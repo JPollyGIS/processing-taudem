@@ -49,7 +49,7 @@ class GridNet(TauDemAlgorithm):
     STRAHLER_ORDER = "STRAHLER_ORDER"
 
     def name(self):
-        return 'gridnet'
+        return "gridnet"
 
     def displayName(self):
         return self.tr("Grid Network")
@@ -81,7 +81,7 @@ class GridNet(TauDemAlgorithm):
                                                             self.tr("Mask grid"),
                                                             optional=True))
         self.addParameter(QgsProcessingParameterNumber(self.THRESHOLD,
-                                                       self.tr('Mask threshold'),
+                                                       self.tr("Mask threshold"),
                                                        QgsProcessingParameterNumber.Double,
                                                        100.0,
                                                        True))
@@ -105,9 +105,9 @@ class GridNet(TauDemAlgorithm):
         arguments.append(self.parameterAsRasterLayer(parameters, self.D8_FLOWDIR, context).source())
 
         mask = self.parameterAsRasterLayer(parameters, self.MASK_GRID, context)
-        if weight:
+        if mask:
             arguments.append("-mask")
-            arguments.append(weight.source())
+            arguments.append(mask.source())
             arguments.append("-thresh")
             arguments.append("{}".format(self.parameterAsDouble(parameters, self.THRESHOLD, context)))
 

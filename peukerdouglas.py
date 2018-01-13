@@ -53,7 +53,7 @@ class PeukerDouglas(TauDemAlgorithm):
         return self.tr("Stream network analysis")
 
     def groupId(self):
-        return "sreamnalysis"
+        return "streamanalysis"
 
     def tags(self):
         return self.tr("dem,hydrology,smooth,peuker,douglas").split(",")
@@ -88,7 +88,7 @@ class PeukerDouglas(TauDemAlgorithm):
                                                        False))
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.STREAM_SOURCE,
-                                                                  self.tr("D8 slope")))
+                                                                  self.tr("Stream source")))
 
     def processAlgorithm(self, parameters, context, feedback):
         arguments = []

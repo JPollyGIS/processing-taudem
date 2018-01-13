@@ -41,7 +41,7 @@ class DinfFlowDir(TauDemAlgorithm):
     DINF_SLOPE = "DINF_SLOPE"
 
     def name(self):
-        return 'dinfflowdir'
+        return "dinfflowdir"
 
     def displayName(self):
         return self.tr("D-infinity flow directions")

@@ -75,38 +75,38 @@ class TauDemProvider(QgsProcessingProvider):
         self.algs = []
 
     def id(self):
-        return 'taudem'
+        return "taudem"
 
     def name(self):
-        return 'TauDEM'
+        return "TauDEM"
 
     def icon(self):
-        return QIcon(os.path.join(pluginPath, 'icons', 'taudem.svg'))
+        return QIcon(os.path.join(pluginPath, "icons", "taudem.svg"))
 
     def load(self):
         ProcessingConfig.settingIcons[self.name()] = self.icon()
         ProcessingConfig.addSetting(Setting(self.name(),
                                             taudemUtils.TAUDEM_ACTIVE,
-                                            self.tr('Activate'),
+                                            self.tr("Activate"),
                                             False))
         ProcessingConfig.addSetting(Setting(self.name(),
                                             taudemUtils.TAUDEM_DIRECTORY,
-                                            self.tr('TauDEM directory'),
+                                            self.tr("TauDEM directory"),
                                             taudemUtils.taudemDirectory(),
                                             valuetype=Setting.FOLDER))
         ProcessingConfig.addSetting(Setting(self.name(),
                                             taudemUtils.TAUDEM_MPICH,
-                                            self.tr('MPICH2/OpenMPI bin directory'),
+                                            self.tr("MPICH2/OpenMPI bin directory"),
                                             taudemUtils.mpichDirectory(),
                                             valuetype=Setting.FOLDER))
         ProcessingConfig.addSetting(Setting(self.name(),
                                             taudemUtils.TAUDEM_PROCESSES,
-                                            self.tr('Number of MPI parallel processes to use'),
+                                            self.tr("MPI processes to use"),
                                             2,
                                             valuetype=Setting.INT))
         ProcessingConfig.addSetting(Setting(self.name(),
                                             taudemUtils.TAUDEM_VERBOSE,
-                                            self.tr('Log commands output'),
+                                            self.tr("Log commands output"),
                                             False))
         ProcessingConfig.readSettings()
         self.refreshAlgorithms()
@@ -167,6 +167,6 @@ class TauDemProvider(QgsProcessingProvider):
             self.addAlgorithm(a)
 
     def tr(self, string, context=''):
-        if context == '':
-            context = 'TauDemProvider'
+        if context == "":
+            context = "TauDemProvider"
         return QCoreApplication.translate(context, string)
