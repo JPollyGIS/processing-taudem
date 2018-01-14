@@ -50,6 +50,7 @@ from processing_taudem.dropanalysis import DropAnalysis
 from processing_taudem.streamnet import StreamNet
 from processing_taudem.moveoutletstostreams import MoveOutletsToStreams
 from processing_taudem.gagewatershed import GageWatershed
+from processing_taudem.connectdown import ConnectDown
 
 from processing_taudem.slopearearatio import SlopeAreaRatio
 from processing_taudem.d8hdisttostrm import D8HDistToStrm
@@ -146,6 +147,7 @@ class TauDemProvider(QgsProcessingProvider):
                 StreamNet(),
                 MoveOutletsToStreams(),
                 GageWatershed(),
+                ConnectDown(),
 
                 SlopeAreaRatio(),
                 D8HDistToStrm(),
