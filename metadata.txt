@@ -3,7 +3,7 @@ name=TauDEM for Processing
 description=DEM tools for the extraction and analysis of hydrologic information
 about=TauDEM (Terrain analysis using Digital Elevation Models) is a suite of DEM tools for the extraction and analysis of hydrologic information from topography as represented by a DEM.
 category=Plugins
-version=1.1.0
+version=2.0.0
 qgisMinimumVersion=3.0
 
 icon=icons/taudem.svg
@@ -16,5 +16,5 @@ homepage=https://github.com/alexbruy/processing-taudem
 tracker=https://github.com/alexbruy/processing-taudem/issues
 repository=https://github.com/alexbruy/processing-taudem
 
-experimental=False
+experimental=True
 deprecated=False
