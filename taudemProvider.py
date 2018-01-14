@@ -62,6 +62,7 @@ from processing_taudem.dinfdistdown import DinfDistDown
 from processing_taudem.dinfdistup import DinfDistUp
 from processing_taudem.dinfavalanche import DinfAvalanche
 from processing_taudem.slopeavedown import SlopeAveDown
+from processing_taudem.twi import Twi
 
 from processing_taudem import taudemUtils
 
@@ -157,6 +158,7 @@ class TauDemProvider(QgsProcessingProvider):
                 DinfDistUp(),
                 DinfAvalanche(),
                 SlopeAveDown(),
+                Twi()
                ]
 
         return algs
