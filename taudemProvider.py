@@ -30,7 +30,7 @@ import os
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
-from qgis.core import QgsProcessingProvider, QgsMessageLog
+from qgis.core import QgsProcessingProvider
 
 from processing.core.ProcessingConfig import ProcessingConfig, Setting
 
