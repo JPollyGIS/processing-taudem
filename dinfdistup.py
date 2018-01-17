@@ -125,8 +125,8 @@ class DinfDistUp(TauDemAlgorithm):
         arguments.append("-thresh")
         arguments.append("{}".format(self.parameterAsDouble(parameters, self.THRESHOLD, context)))
 
-        statMethod = self.statiscitalMethods[self.parameterAsEnum(parameters, self.STATISTICAL_METHOD, context)][1]
-        distMethod = self.statiscitalMethods[self.parameterAsEnum(parameters, self.DISTANCE_METHOD, context)][1]
+        statMethod = self.statisticalMethods[self.parameterAsEnum(parameters, self.STATISTICAL_METHOD, context)][1]
+        distMethod = self.distanceMethods[self.parameterAsEnum(parameters, self.DISTANCE_METHOD, context)][1]
         arguments.append("-m")
         arguments.append(statMethod)
         arguments.append(distMethod)

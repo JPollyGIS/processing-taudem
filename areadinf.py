@@ -46,7 +46,7 @@ class AreaDinf(TauDemAlgorithm):
     DINF_CONTRIB_AREA = "DINF_CONTRIB_AREA"
 
     def name(self):
-        return 'areadinf'
+        return "areadinf"
 
     def displayName(self):
         return self.tr("D-infinity contributing area")
