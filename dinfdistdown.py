@@ -26,7 +26,6 @@ __copyright__ = '(C) 2012-2018, Alexander Bruy'
 __revision__ = '$Format:%H$'
 
 import os
-from collections import OrderedDict
 
 from qgis.core import (QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterEnum,
@@ -74,14 +73,14 @@ class DinfDistDown(TauDemAlgorithm):
         super().__init__()
 
     def initAlgorithm(self, config=None):
-        self.statisticalMethods = OrderedDict([(self.tr("Average"), "ave"),
-                                               (self.tr("Minimum"), "min"),
-                                               (self.tr("Maximum"), "max")])
+        self.statisticalMethods = ((self.tr("Average"), "ave"),
+                                   (self.tr("Minimum"), "min"),
+                                   (self.tr("Maximum"), "max"))
 
-        self.distanceMethods = OrderedDict([(self.tr("Horizontal"), "h"),
-                                            (self.tr("Vertical"), "v"),
-                                            (self.tr("Pythagoras"), "p"),
-                                            (self.tr("Surface"), "s")])
+        self.distanceMethods = ((self.tr("Horizontal"), "h"),
+                                (self.tr("Vertical"), "v"),
+                                (self.tr("Pythagoras"), "p"),
+                                (self.tr("Surface"), "s"))
 
         self.addParameter(QgsProcessingParameterRasterLayer(self.PIT_FILLED,
                                                             self.tr("Pit filled elevation")))
