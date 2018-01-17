@@ -47,4 +47,4 @@ class TauDemAlgorithm(QgsProcessingAlgorithm):
         return QIcon(os.path.join(pluginPath, "icons", "taudem.svg"))
 
     def tr(self, text):
-        return QCoreApplication.translate("TauDemAlgorithm", text)
+        return QCoreApplication.translate(self.__class__.__name__, text)
