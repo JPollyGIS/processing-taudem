@@ -9,4 +9,3 @@ third party algorithms from QGIS, making your spatial analysis tasks more
 productive and easy to accomplish.
 
 This plugin implements TauDEM provider for QGIS Processing framework.
-Requires QGIS >= 3.0
